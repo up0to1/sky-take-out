@@ -5,6 +5,7 @@ import com.sky.interceptor.JwtTokenUserInterceptor;
 import com.sky.json.JacksonObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -19,6 +20,7 @@ import springfox.documentation.service.ApiInfo;
 import springfox.documentation.spi.DocumentationType;
 import springfox.documentation.spring.web.plugins.Docket;
 
+import java.io.File;
 import java.util.List;
 
 /**
@@ -34,21 +36,26 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
     @Autowired
     private JwtTokenUserInterceptor jwtTokenUserInterceptor;
 
+    @Value("${sky.upload.path:upload}")
+    private String uploadPath;
+
     /**
      * 注册自定义拦截器
      *
      * @param registry
      */
-    protected void addInterceptors(InterceptorRegistry registry,InterceptorRegistry registry2) {
+    protected void addInterceptors(InterceptorRegistry registry) {
         log.info("开始注册自定义拦截器...");
         registry.addInterceptor(jwtTokenAdminInterceptor)
                 .addPathPatterns("/admin/**")
-                .excludePathPatterns("/admin/employee/login");
+                .excludePathPatterns("/admin/employee/login")
+                .excludePathPatterns("/admin/common/download");
 
-        registry2.addInterceptor(jwtTokenUserInterceptor)
+        registry.addInterceptor(jwtTokenUserInterceptor)
                 .addPathPatterns("/user/**")
                 .excludePathPatterns("/user/user/login")
-                .excludePathPatterns("/user/shop/status");
+                .excludePathPatterns("/user/shop/status")
+                .excludePathPatterns("/user/common/download");
     }
 
     /**
@@ -96,6 +103,15 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
     protected void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/doc.html").addResourceLocations("classpath:/META-INF/resources/");
         registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
+
+        String projectPath = System.getProperty("user.dir");
+        String absolutePath = projectPath + File.separator + uploadPath + File.separator;
+        String uploadLocation = "file:" + absolutePath;
+        registry.addResourceHandler("/upload/**").addResourceLocations(uploadLocation);
+        registry.addResourceHandler("/admin/upload/**").addResourceLocations(uploadLocation);
+        registry.addResourceHandler("/user/upload/**").addResourceLocations(uploadLocation);
+        log.info("静态资源映射配置完成，上传目录：{}", uploadLocation);
+        log.info("项目根目录：{}", projectPath);
     }
 
 //    @Override

@@ -39,10 +39,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -61,6 +58,8 @@ public class OrderServiceImpl implements OrderService {
     private UserMapper userMapper;
     @Autowired
     private WeChatPayUtil weChatPayUtil;
+    @Autowired
+    private com.sky.websocket.WebSocketServer webSocketServer;
 
     @Value("${sky.shop.address}")
     private String shopAddress;
@@ -79,8 +78,8 @@ public class OrderServiceImpl implements OrderService {
         if (addressBook == null) {
             throw new AddressBookBusinessException(MessageConstant.ADDRESS_BOOK_IS_NULL);
         }
-//        检查用户的收货地址是否超出了配送范围
-        checkOutOfRange(addressBook.getCityName() + addressBook.getDistrictName() + addressBook.getDetail());
+//        检查用户的收货地址是否超出了配送范围（暂时注释，百度地图AK IP校验问题）
+//        checkOutOfRange(addressBook.getCityName() + addressBook.getDistrictName() + addressBook.getDetail());
 
         Long userId = BaseContext.getCurrentId();
         ShoppingCart shoppingCart = new ShoppingCart();
@@ -130,12 +129,13 @@ public class OrderServiceImpl implements OrderService {
         Long userId = BaseContext.getCurrentId();
         User user = userMapper.getById(userId);
 
-        JSONObject jsonObject = weChatPayUtil.pay(
-                ordersPaymentDTO.getOrderNumber(),
-                new BigDecimal("0.01"),
-                "苍穹外卖订单",
-                user.getOpenid()
-        );
+//        JSONObject jsonObject = weChatPayUtil.pay(
+//                ordersPaymentDTO.getOrderNumber(),
+//                new BigDecimal("0.01"),
+//                "苍穹外卖订单",
+//                user.getOpenid()
+//        );
+        JSONObject jsonObject = new JSONObject();
 
         if (jsonObject.getString("code") != null && jsonObject.getString("code").equals("ORDERPAID")) {
             throw new OrderBusinessException("该订单已支付");
@@ -160,6 +160,14 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         orderMapper.update(orders);
+
+        Map map = new HashMap();
+        map.put("type", 1);
+        map.put("orderId", orders.getId());
+        map.put("content", "订单号：" + outTradeNo);
+
+        String json = JSON.toJSONString(map);
+        webSocketServer.sendToAllClient(json);
     }
 
     @Override
@@ -435,11 +443,17 @@ public class OrderServiceImpl implements OrderService {
         orderMapper.update(orders);
     }
 
+    @Override
+    public void reminder(Long id) {
+
+    }
+
     /**
      * 检查客户的收货地址是否超出配送范围
      * @param address
      */
     private void checkOutOfRange(String address) throws Exception {
+        log.info("检查配送范围 - 用户地址: {}, 店铺地址: {}", address, shopAddress);
         Map params = new LinkedHashMap<String, String>();
         params.put("output", "json");
         params.put("ak", ak);
@@ -479,11 +493,13 @@ public class OrderServiceImpl implements OrderService {
         return Coordinate;
     }
     public String parseAddress(String Coordinate){
+        log.info("百度地图API返回结果: {}", Coordinate);
         JSONObject jsonObject = JSON.parseObject(Coordinate);
-        if (!jsonObject.getString("status").equals("0")){
+        String status = jsonObject.getString("status");
+        if (!status.equals("0")){
+            log.error("百度地图API调用失败, status: {}, message: {}", status, jsonObject.getString("message"));
             throw new OrderBusinessException(MessageConstant.ADDRESS_PARSE_ERROR);
         }
-        //店铺经纬度坐标
         JSONObject location = jsonObject.getJSONObject("result").getJSONObject("location");
         String lat = location.getString("lat");
         String lng = location.getString("lng");

@@ -1,77 +1,28 @@
-package com.sky.controller.admin;
+package com.sky.controller.user;
 
-import com.sky.constant.MessageConstant;
-import com.sky.result.Result;
-import com.sky.utils.AliOssUtil;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.UUID;
 
 @RestController
-@RequestMapping("/admin/common")
-@Api(tags = "通用接口")
+@RequestMapping("/user/common")
+@Api(tags = "用户端通用接口")
 @Slf4j
-public class CommonController {
-
-//    @Autowired
-//    private AliOssUtil aliOssUtil;
+public class UserCommonController {
 
     @Value("${sky.upload.path:upload}")
     private String uploadPath;
-
-    @Value("${sky.upload.url-prefix:/upload/}")
-    private String urlPrefix;
-
-    @PostMapping("/upload")
-    @ApiOperation("文件上传")
-    public Result<String> upload(MultipartFile file) {
-        log.info("文件上传：{}", file);
-
-        try {
-            String originalFilename = file.getOriginalFilename();
-            String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            String newFileName = UUID.randomUUID().toString() + extension;
-
-            String projectPath = System.getProperty("user.dir");
-            File uploadDir = new File(projectPath, uploadPath);
-            if (!uploadDir.exists()) {
-                uploadDir.mkdirs();
-            }
-
-            File destFile = new File(uploadDir, newFileName);
-            file.transferTo(destFile);
-
-            String filePath = urlPrefix + newFileName;
-            log.info("文件上传成功，路径：{}", filePath);
-            return Result.success(filePath);
-
-//            String originalFilename = file.getOriginalFilename();
-//            String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-//            String objectName = UUID.randomUUID().toString() + extension;
-//
-//            String filePath = aliOssUtil.upload(file.getBytes(), objectName);
-//            return Result.success(filePath);
-        } catch (IOException e) {
-            log.error("文件上传失败：{}", e);
-        }
-
-        return Result.error(MessageConstant.UPLOAD_FAILED);
-    }
 
     @GetMapping("/download")
     @ApiOperation("图片下载")
@@ -89,9 +40,7 @@ public class CommonController {
                 name = name.substring("upload/".length());
             }
             
-            String fullPath = projectPath + File.separator + uploadPath + File.separator + name;
-            log.info("完整文件路径：{}", fullPath);
-            File file = new File(fullPath);
+            File file = new File(projectPath, uploadPath + "/" + name);
 
             if (!file.exists()) {
                 log.error("文件不存在：{}", file.getAbsolutePath());
@@ -112,7 +61,6 @@ public class CommonController {
             outputStream.flush();
         } catch (IOException e) {
             log.error("图片下载失败：{}", e);
-            e.printStackTrace();
             response.setStatus(500);
         } finally {
             if (outputStream != null) {
