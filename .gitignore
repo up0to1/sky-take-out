@@ -1,6 +1,42 @@
+# ===== Java / Maven =====
 **/target/
-.idea
-*.iml
 *.class
-*Test.java
+*.jar
+*.war
+*.ear
+*.log
+*.ctxt
+.mtj.tmp/
+hs_err_pid*
+
+# ===== IDE =====
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+.eclipse/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ===== Maven =====
+dependency-reduced-pom.xml
+
+# ===== Resources =====
+**/resources/
+
+# ===== Upload =====
+upload/
+
+# ===== Test =====
 **/test/
+*Test.java
